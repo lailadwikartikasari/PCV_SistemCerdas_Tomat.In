@@ -96,6 +96,6 @@ class SistemCerdasPCV:
         print("Hasil ekstraksi disimpan ke 'hasil_ekstraksi.xlsx'")
 
 if __name__ == "__main__":
-    folder_path = "D:/New folder/coba/Tomat"
+    folder_path = "D:/New folder/Tomat.in\PCV_SistemCerdas_Tomat.In/Tomat"
     os.makedirs("hasil_cropping", exist_ok=True)
     SistemCerdasPCV.proses_gambar(folder_path)
