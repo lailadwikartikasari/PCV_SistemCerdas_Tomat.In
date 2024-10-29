@@ -12,10 +12,6 @@ class SistemCerdasPCV:
         return cv2.resize(image, dimensi)
 
     @staticmethod
-    def adjust_brightness_contrast(image, brightness=30, contrast=30):
-        return cv2.convertScaleAbs(image, alpha=1 + (contrast / 100), beta=brightness)
-
-    @staticmethod
     def ambil_rata_rgb(gambar):
         gambar_rgb = cv2.cvtColor(gambar, cv2.COLOR_BGR2RGB)  # Konversi BGR ke RGB
         rata_rgb = np.mean(gambar_rgb, axis=(0, 1))  # Rata-rata berdasarkan semua piksel
@@ -23,14 +19,15 @@ class SistemCerdasPCV:
         print("Rata-rata RGB:", rata_rgb)  # Tampilkan nilai RGB
         return rata_rgb
 
+
     @staticmethod
     def label_kematangan(rgb):
         R, G, B = rgb
         
         # Atur batasan untuk kematangan berdasarkan nilai RGB
-        if R > 150 and G < 150 and B < 150:  # Merah pekat (R tinggi)
+        if R > 100 and G < 90 and B < 90:  # Merah pekat (R tinggi)
             return 'Matang'
-        elif R > 120 and G > 120 and B < 130:  # Kuning ke oranye
+        elif R > 50 and G > 90 and B < 85:  # Kuning ke oranye
             return 'Setengah Matang'
         else:  # Jika tidak memenuhi syarat untuk Merah Pekat, Matang, atau Setengah Matang
             return 'Mentah'
@@ -44,8 +41,8 @@ class SistemCerdasPCV:
         tmp = cv2.cvtColor(gambar, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(tmp, 127, 255, cv2.THRESH_BINARY_INV)
 
-        mask = cv2.dilate(mask.copy(), None, iterations=5)
-        mask = cv2.erode(mask.copy(), None, iterations=5)
+        mask = cv2.dilate(mask.copy(), None, iterations=10)
+        mask = cv2.erode(mask.copy(), None, iterations=10)
         b, g, r = cv2.split(gambar)
         rgba = [b, g, r, mask]
         dst = cv2.merge(rgba, 4)
@@ -68,13 +65,11 @@ class SistemCerdasPCV:
         
         for namagambar in os.listdir(folder_path):
             path_file = os.path.join(folder_path, namagambar)
+
             gambar_asli = cv2.imread(path_file)
             if gambar_asli is not None:
                 gambar_diubah = SistemCerdasPCV.resize_image(gambar_asli)
                 gambar_diubah = SistemCerdasPCV.crop_tengah_tomat(gambar_diubah)
-
-                # Penyesuaian kecerahan dan kontras pada gambar yang diubah
-                gambar_diubah = SistemCerdasPCV.adjust_brightness_contrast(gambar_diubah)
 
                 rata_rgb = SistemCerdasPCV.ambil_rata_rgb(gambar_diubah)
                 label = SistemCerdasPCV.label_kematangan(rata_rgb)
@@ -87,7 +82,7 @@ class SistemCerdasPCV:
                 data['label'].append(label)
 
                 # Simpan gambar hasil crop
-                output_path = os.path.join("hasil_cropping", f"hasil_{namagambar}")
+                output_path = os.path.join("hasil_ekstrasi", f"hasil_{namagambar}")
                 SistemCerdasPCV.simpan_hasil(gambar_diubah, output_path)
 
         # Mengonversi hasil ke DataFrame dan menyimpannya ke file Excel
@@ -96,6 +91,6 @@ class SistemCerdasPCV:
         print("Hasil ekstraksi disimpan ke 'hasil_ekstraksi.xlsx'")
 
 if __name__ == "__main__":
-    folder_path = "D:/New folder/coba/Tomat"
-    os.makedirs("hasil_cropping", exist_ok=True)
+    folder_path = "D:/New folder/Tomat.in/Tomat"
+    os.makedirs("hasil_ekstrasi", exist_ok=True)
     SistemCerdasPCV.proses_gambar(folder_path)
