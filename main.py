@@ -29,9 +29,9 @@ class SistemCerdasPCV:
         
         # Atur batasan untuk kematangan berdasarkan nilai RGB
         if R > 150 and G < 150 and B < 150:  # Merah pekat (R tinggi)
-            return 'Matang'
+            return 'Mentah'
         elif R > 120 and G > 120 and B < 130:  # Kuning ke oranye
-            return 'Setengah Matang'
+            return 'Mentah'
         else:  # Jika tidak memenuhi syarat untuk Merah Pekat, Matang, atau Setengah Matang
             return 'Mentah'
 
@@ -87,15 +87,15 @@ class SistemCerdasPCV:
                 data['label'].append(label)
 
                 # Simpan gambar hasil crop
-                output_path = os.path.join("hasil_cropping", f"hasil_{namagambar}")
+                output_path = os.path.join("hasil_cropping_mentah", f"hasil_{namagambar}")
                 SistemCerdasPCV.simpan_hasil(gambar_diubah, output_path)
 
         # Mengonversi hasil ke DataFrame dan menyimpannya ke file Excel
         df = pd.DataFrame(data)
-        df.to_excel('hasil_ekstraksi.xlsx', index=False)
+        df.to_excel('hasil_ekstraksi_mentah.xlsx', index=False)
         print("Hasil ekstraksi disimpan ke 'hasil_ekstraksi.xlsx'")
 
 if __name__ == "__main__":
-    folder_path = "D:/New folder/Tomat.in\PCV_SistemCerdas_Tomat.In/Tomat"
-    os.makedirs("hasil_cropping", exist_ok=True)
+    folder_path = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/Tomat Mentah"
+    os.makedirs("hasil_cropping_mentah", exist_ok=True)
     SistemCerdasPCV.proses_gambar(folder_path)
