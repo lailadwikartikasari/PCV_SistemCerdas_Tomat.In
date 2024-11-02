@@ -5,33 +5,20 @@ import numpy as np
 
 class SistemCerdasPCV:
     @staticmethod
-    def resize_image(image, lebar=100, tinggi=100):
-        # Ukur ukuran gambar yang diinginkan
+    def resize_image(image, lebar=100, tinggi=100, output_path=None):
+        # Mengatur ukuran gambar yang diinginkan
         lebar_baru = int(image.shape[1] * lebar / 100)
         tinggi_baru = int(image.shape[0] * tinggi / 100)
         
         # Resize gambar
         image_resized = cv2.resize(image, (lebar_baru, tinggi_baru))
         
-        # Tentukan ukuran gambar yang diinginkan
-        target_width = lebar_baru
-        target_height = tinggi_baru
-
-        # Hitung center crop untuk memusatkan objek
-        center_x, center_y = image_resized.shape[1] // 2, image_resized.shape[0] // 2
-        start_x = center_x - (target_width // 2)
-        start_y = center_y - (target_height // 2)
-
-        # Pastikan crop tidak keluar dari batas gambar
-        start_x = max(start_x, 0)
-        start_y = max(start_y, 0)
-        end_x = min(start_x + target_width, image_resized.shape[1])
-        end_y = min(start_y + target_height, image_resized.shape[0])
-
-        # Crop gambar
-        cropped_image = image_resized[start_y:end_y, start_x:end_x]
+        # Simpan gambar hasil resize jika output_path diberikan
+        if output_path is not None:
+            cv2.imwrite(output_path, image_resized)
+            print(f"Gambar yang diubah ukuran disimpan di: {output_path}")
         
-        return cropped_image
+        return image_resized
 
     @staticmethod
     def adjust_brightness_contrast(image, brightness=30, contrast=30):
@@ -48,13 +35,11 @@ class SistemCerdasPCV:
     @staticmethod
     def label_kematangan(rgb):
         R, G, B = rgb
-        
-        # Atur batasan untuk kematangan berdasarkan nilai RGB
         if R > 150 and G < 150 and B < 150:  # Merah pekat (R tinggi)
-            return 'Mentah'
+            return 'Matang'
         elif R > 120 and G > 120 and B < 130:  # Kuning ke oranye
-            return 'Mentah'
-        else:  # Jika tidak memenuhi syarat untuk Merah Pekat, Matang, atau Setengah Matang
+            return 'Setengah Matang'
+        else:
             return 'Mentah'
 
     @staticmethod
@@ -68,9 +53,6 @@ class SistemCerdasPCV:
 
         mask = cv2.dilate(mask.copy(), None, iterations=5)
         mask = cv2.erode(mask.copy(), None, iterations=5)
-        b, g, r = cv2.split(gambar)
-        rgba = [b, g, r, mask]
-        dst = cv2.merge(rgba, 4)
         
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
@@ -88,14 +70,22 @@ class SistemCerdasPCV:
     def proses_gambar(folder_path):
         data = {'Nama Gambar': [], 'R': [], 'G': [], 'B': [], 'label': []}
         
+        # Direktori untuk menyimpan gambar yang diresize
+        output_resize_directory = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/hasil_resize"
+        os.makedirs(output_resize_directory, exist_ok=True)
+
         for namagambar in os.listdir(folder_path):
             path_file = os.path.join(folder_path, namagambar)
             gambar_asli = cv2.imread(path_file)
             if gambar_asli is not None:
-                gambar_diubah = SistemCerdasPCV.resize_image(gambar_asli)
+                # Simpan gambar yang diresize
+                output_resize_path = os.path.join(output_resize_directory, f'resize_{namagambar}')
+                gambar_diubah = SistemCerdasPCV.resize_image(gambar_asli, output_path=output_resize_path)
+                
+                # Crop bagian tengah gambar
                 gambar_diubah = SistemCerdasPCV.crop_tengah_tomat(gambar_diubah)
 
-                # Penyesuaian kecerahan dan kontras pada gambar yang diubah
+                # Penyesuaian kecerahan dan kontras
                 gambar_diubah = SistemCerdasPCV.adjust_brightness_contrast(gambar_diubah)
 
                 rata_rgb = SistemCerdasPCV.ambil_rata_rgb(gambar_diubah)
@@ -109,15 +99,17 @@ class SistemCerdasPCV:
                 data['label'].append(label)
 
                 # Simpan gambar hasil crop
-                output_path = os.path.join("hasil_cropping_mentah", f"hasil_{namagambar}")
+                output_directory = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/hasil_cropping_matang"
+                os.makedirs(output_directory, exist_ok=True)
+                output_path = os.path.join(output_directory, f"hasil_{namagambar}")
                 SistemCerdasPCV.simpan_hasil(gambar_diubah, output_path)
 
-        # Mengonversi hasil ke DataFrame dan menyimpannya ke file Excel
+        # Simpan hasil ke Excel
         df = pd.DataFrame(data)
-        df.to_excel('hasil_ekstraksi_mentah.xlsx', index=False)
-        print("Hasil ekstraksi disimpan ke 'hasil_ekstraksi.xlsx'")
+        output_file = 'D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/hasil_cropping_matang_v2.xlsx'
+        df.to_excel(output_file, index=False)
+        print("Hasil ekstraksi disimpan ke 'hasil_cropping_matang.xlsx'")
 
 if __name__ == "__main__":
-    folder_path = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/Tomat Mentah"
-    os.makedirs("hasil_cropping_mentah", exist_ok=True)
+    folder_path = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/TM_BARU"
     SistemCerdasPCV.proses_gambar(folder_path)
