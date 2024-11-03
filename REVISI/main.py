@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import numpy as np
 from PIL import Image
-from rembg import remove 
+from rembg import remove
 
 class SistemCerdasPCV:
     @staticmethod
@@ -18,12 +18,16 @@ class SistemCerdasPCV:
         return cv2.convertScaleAbs(image, alpha=1 + (contrast / 100), beta=brightness)
 
     @staticmethod
-    def ambil_rata_rgb(gambar):
-        gambar_rgb = cv2.cvtColor(gambar, cv2.COLOR_BGR2RGB)  # Konversi BGR ke RGB
-        rata_rgb = np.mean(gambar_rgb, axis=(0, 1))  # Rata-rata berdasarkan semua piksel
-        rata_rgb = np.round(rata_rgb).astype(int)  # Pembulatan ke integer
-        print("Rata-rata RGB:", rata_rgb)  # Tampilkan nilai RGB
-        return rata_rgb
+    def ambil_rgb_real(gambar):
+        # Pastikan gambar dalam format RGB
+        gambar_rgb = cv2.cvtColor(gambar, cv2.COLOR_BGR2RGB)
+        
+        # Ambil nilai RGB dari piksel tengah gambar
+        tinggi, lebar, _ = gambar_rgb.shape
+        piksel_tengah = gambar_rgb[tinggi // 2, lebar // 2]
+        
+        print("Nilai RGB real dari piksel tengah:", piksel_tengah)
+        return piksel_tengah
 
     @staticmethod
     def label_kematangan(rgb):
@@ -39,29 +43,22 @@ class SistemCerdasPCV:
 
     @staticmethod
     def simpan_hasil(gambar, path_output):
-        cv2.imwrite(path_output, gambar)
+        gambar.save(path_output)
 
     @staticmethod
-    def hapus_bg(img, filename, output_directory):
-        """Fungsi untuk menghapus background gambar dan menyimpannya ke direktori output."""
-        try:
-            # Menghapus latar belakang menggunakan rembg
-            img_no_bg = remove(img)
-
-            # Mengubah hasil dari NumPy array ke PIL Image
-            img_no_bg_pil = Image.fromarray(cv2.cvtColor(img_no_bg, cv2.COLOR_BGR2RGB))
-
-            # Ubah ekstensi file menjadi .png
-            output_file_path = os.path.join(output_directory, f'no_bg_{os.path.splitext(filename)[0]}.png')
-
-            # Simpan gambar hasil tanpa background dengan format PNG
-            img_no_bg_pil.save(output_file_path, format='PNG')
-            print(f"Gambar dengan background dihapus disimpan di {output_file_path}")
-
-            return img_no_bg  # Mengembalikan gambar yang telah dihapus latar belakang
-        except Exception as e:
-            print(f"Kesalahan saat menghapus latar belakang pada {filename}: {e}")
-            return img  # Kembalikan gambar asli jika terjadi kesalahan
+    def remove_background(input_path, output_path):
+        # Membuka gambar dengan PIL
+        input_image = Image.open(input_path)
+        
+        # Menghapus latar belakang
+        output_image = remove(input_image)
+        
+        # Pastikan folder tujuan ada
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        # Menyimpan hasil dalam format PNG agar latar belakang tembus
+        output_image.save(output_path)
+        print(f"Gambar dengan latar belakang dihapus disimpan di {output_path}")
 
     @staticmethod
     def proses_gambar(folder_path):
@@ -69,35 +66,27 @@ class SistemCerdasPCV:
         
         for namagambar in os.listdir(folder_path):
             path_file = os.path.join(folder_path, namagambar)
-            gambar_asli = cv2.imread(path_file)
-            if gambar_asli is not None:
-                gambar_diubah = SistemCerdasPCV.resize_image(gambar_asli)
+            if path_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                output_path = os.path.join("hasil_removeBG_Matang", f"hasil_{namagambar.split('.')[0]}.png")
+                SistemCerdasPCV.remove_background(path_file, output_path)
 
-                # Menghapus latar belakang gambar
-                output_directory = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/hasil_cropping_matang"
-                os.makedirs(output_directory, exist_ok=True)  # Membuat direktori jika belum ada
-                gambar_diubah = SistemCerdasPCV.hapus_bg(gambar_diubah, namagambar, output_directory)
+                # Load gambar hasil tanpa latar belakang untuk analisis lanjutan
+                gambar_asli = cv2.imread(output_path, cv2.IMREAD_UNCHANGED)
+                if gambar_asli is not None:
+                    rgb_real = SistemCerdasPCV.ambil_rgb_real(gambar_asli)
+                    label = SistemCerdasPCV.label_kematangan(rgb_real)
 
-                # Penyesuaian kecerahan dan kontras pada gambar yang diubah
-                gambar_diubah = SistemCerdasPCV.adjust_brightness_contrast(gambar_diubah)
+                    data['Nama Gambar'].append(namagambar)
+                    data['R'].append(rgb_real[0])
+                    data['G'].append(rgb_real[1])
+                    data['B'].append(rgb_real[2])
+                    data['label'].append(label)
 
-                rata_rgb = SistemCerdasPCV.ambil_rata_rgb(gambar_diubah)
-                label = SistemCerdasPCV.label_kematangan(rata_rgb)
-
-                # Menyimpan hasil ke dalam dictionary
-                data['Nama Gambar'].append(namagambar)
-                data['R'].append(rata_rgb[0])
-                data['G'].append(rata_rgb[1])
-                data['B'].append(rata_rgb[2])
-                data['label'].append(label)
-
-        # Mengonversi hasil ke DataFrame dan menyimpannya ke file Excel
         df = pd.DataFrame(data)
-        output_file = 'D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/hasil_cropping_matang.xlsx'
-        df.to_excel(output_file, index=False)
-        print("Hasil ekstraksi disimpan ke 'hasil_cropping_matang.xlsx'")
+        df.to_excel('hasil_Matang.xlsx', index=False)
+        print("Data hasil pengolahan disimpan dalam 'hasil_Matang.xlsx'")
 
 if __name__ == "__main__":
     folder_path = "D:/New folder/Tomat.in/PCV_SistemCerdas_Tomat.In/REVISI/TM_BARU"
-    os.makedirs("hasil_cropping_matang", exist_ok=True)
+    # os.makedirs("hasil_cropping_Setengah Matang", exist_ok=True)
     SistemCerdasPCV.proses_gambar(folder_path)
